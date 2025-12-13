@@ -1,10 +1,12 @@
 import os
 import aiosqlite
 from fastmcp import FastMCP
+import tempfile
 
 mcp = FastMCP("Expense Tracker")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "expenses.db")
+TEMP_DIR = tempfile.gettempdir()
+DB_PATH = os.path.join(TEMP_DIR, "expenses.db")
 CATEGORIES_PATH = os.path.join(os.path.dirname(__file__), "categories.json")
 
 def init_db():
@@ -119,7 +121,7 @@ async def summarize(start_date, end_date, category=None):
     except Exception as e:
         return {"status": "error", "message": f"Error summarizing expenses: {str(e)}"}
     
-@mcp.resource("expense://categories",mime_type="application/json")
+@mcp.resource("expense:///categories",mime_type="application/json")
 def get_categories():
     # Read fresh each time so you can edit the file without restarting
     try:
