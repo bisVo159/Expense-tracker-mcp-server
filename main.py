@@ -1,6 +1,7 @@
 import os
 import aiosqlite
 from fastmcp import FastMCP
+from typing import Optional
 import tempfile
 
 mcp = FastMCP("Expense Tracker")
@@ -26,21 +27,30 @@ def init_db():
 init_db()
 
 @mcp.tool
-async def add_expense(date, amount, category, subcategory="", note=""):
-    '''Add a new expense entry to the database.'''
+async def add_expense(date: str, amount: float, category: str, subcategory: str = "", note: str = ""):
+    '''
+    Add a new expense entry. 
+    Args:
+        date: Date in YYYY-MM-DD format.
+        amount: The cost of the expense (numeric).
+        category: The main category (e.g., food, transport, housing, utilities, health, education etc).
+        subcategory: Optional specific detail (e.g., groceries, fuel etc).
+        note: Optional extra notes.
+    '''
     try:
         async with aiosqlite.connect(DB_PATH) as c:
             cur = await c.execute(
                 "INSERT INTO expenses(date, amount, category, subcategory, note) VALUES (?,?,?,?,?)",
                 (date, amount, category, subcategory, note)
             )
+            await c.commit()
         return {"status": "ok", "id": cur.lastrowid,"message": "Expense added successfully"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
     
 @mcp.tool()
-async def list_expenses(start_date, end_date):
-    '''List expense entries within an inclusive date range.'''
+async def list_expenses(start_date: str, end_date: str):
+    '''List expense entries within an inclusive date range (YYYY-MM-DD).'''
     try:
         async with aiosqlite.connect(DB_PATH) as c:
             cur = await c.execute(
@@ -58,8 +68,11 @@ async def list_expenses(start_date, end_date):
         return {"status": "error", "message": f"Error listing expenses: {str(e)}"}
     
 @mcp.tool()
-async def edit_expense(subcategory, date, amount=None, category=None, note=None):
-    '''Edit an existing expense entry by its date and subcategory.'''
+async def edit_expense(subcategory: str, date: str, amount: Optional[float] = None, category: Optional[str] = None, note: Optional[str] = None):
+    '''
+    Edit an existing expense entry identified by date and subcategory.
+    Only provide the fields that need updating.
+    '''
     try:
         async with aiosqlite.connect(DB_PATH) as c:
             fields = []
@@ -81,23 +94,25 @@ async def edit_expense(subcategory, date, amount=None, category=None, note=None)
             params.extend([date, subcategory])
             query = f"UPDATE expenses SET {', '.join(fields)} WHERE date = ? and subcategory = ?"
             cur = await c.execute(query, params)
+            await c.commit()
             return {"status": "ok", "rows_affected": cur.rowcount}
     except Exception as e:
         return {"status": "error", "message": str(e)}
     
 @mcp.tool()
-async def delete_expense(date,subcategory):
-    '''Delete an expense entry by its date and subcategory.'''
+async def delete_expense(date: str, subcategory: str):
+    '''Delete an expense entry by its date (YYYY-MM-DD) and subcategory.'''
     try:
         async with aiosqlite.connect(DB_PATH) as c:
             cur = await c.execute("DELETE FROM expenses WHERE date = ? and subcategory = ?", (date,subcategory))
+            await c.commit()
             return {"status": "ok", "rows_affected": cur.rowcount}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 @mcp.tool()
-async def summarize(start_date, end_date, category=None):
-    '''Summarize expenses by category within an inclusive date range.'''
+async def summarize(start_date: str, end_date: str, category: Optional[str] = None):
+    '''Summarize expenses by category within a date range (YYYY-MM-DD).'''
     try:
         async with aiosqlite.connect(DB_PATH) as c:
             query = (
